@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=WhatsApp
+Comment=WhatsApp Web Masaüstü Uygulaması (Tauri)
+Exec=/home/mustafao/.gemini/antigravity/scratch/whatsapp-desktop/target/release/whatsapp-desktop
+Icon=/home/mustafao/.gemini/antigravity/scratch/whatsapp-desktop/icons/512x512.png
+Terminal=false
+Type=Application
+Categories=Network;InstantMessaging;Chat;
+StartupWMClass=WhatsApp
+Keywords=WhatsApp;Chat;Message;Sohbet;
+Actions=Quit;
+
+[Desktop Action Quit]
+Name=Çıkış
+Exec=killall whatsapp-desktop
