@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=WhatsApp
 Comment=WhatsApp Web Masaüstü Uygulaması (Tauri)
-Exec=/home/mustafao/.gemini/antigravity/scratch/whatsapp-desktop/target/release/whatsapp-desktop
+Exec=/home/mustafao/.local/bin/whatsapp-desktop
 Icon=/home/mustafao/.gemini/antigravity/scratch/whatsapp-desktop/icons/512x512.png
 Terminal=false
 Type=Application
