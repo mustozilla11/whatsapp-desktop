@@ -1,6 +1,6 @@
 [package]
 name = "whatsapp-desktop"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 
 [build-dependencies]
@@ -8,3 +8,4 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = "2"

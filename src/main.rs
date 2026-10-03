@@ -10,6 +10,14 @@ fn main() {
     let app_title = format!("WhatsApp v{}", app_version);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // If already running, focus existing window instead of opening a second instance
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .setup(move |app| {
             // Load tray icon
             let tray_icon = app
