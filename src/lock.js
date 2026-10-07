@@ -1,6 +1,64 @@
 (function() {
-    console.log("[WA Desktop] Kilit modülü başlatılıyor...");
+    console.log("[WA Desktop] Kilit ve Bildirim modülü başlatılıyor...");
 
+    // === 1. BİLDİRİM VE GİZLİLİK MODÜLÜ (Notification Privacy Hook) ===
+    let lastNotifTime = 0;
+    function triggerNativeNotification(sender) {
+        const now = Date.now();
+        if (now - lastNotifTime < 1000) return; // Çok sık tetiklenmeyi engelle (debounce)
+        lastNotifTime = now;
+
+        const prevTitle = document.title;
+        // Rust tarafına sender bilgisini başlık üzerinden iletiyoruz (mesaj gövdesi tamamen silinir)
+        document.title = "__WA_NOTIF__:" + sender;
+        setTimeout(() => {
+            if (document.title.startsWith("__WA_NOTIF__")) {
+                document.title = prevTitle;
+            }
+        }, 150);
+    }
+
+    try {
+        // HTML5 Notification API'sini kancala (Hook)
+        if (window.Notification) {
+            window.Notification.permission = "granted";
+            window.Notification.requestPermission = function() {
+                return Promise.resolve("granted");
+            };
+
+            function SafeNotification(title, options) {
+                // title = Gönderen kişi veya grup adı
+                const sender = (title || "").trim() || "Yeni Mesaj";
+                // Mesaj içeriğini (options.body) kasıtlı olarak göndermiyoruz! Sadece gönderen:
+                triggerNativeNotification(sender);
+
+                return {
+                    close: function() {},
+                    addEventListener: function() {},
+                    removeEventListener: function() {},
+                    dispatchEvent: function() { return false; }
+                };
+            }
+            SafeNotification.permission = "granted";
+            SafeNotification.requestPermission = function() {
+                return Promise.resolve("granted");
+            };
+            window.Notification = SafeNotification;
+        }
+
+        // ServiceWorker bildirimlerini de kancala
+        if (window.ServiceWorkerRegistration && window.ServiceWorkerRegistration.prototype) {
+            window.ServiceWorkerRegistration.prototype.showNotification = function(title, options) {
+                const sender = (title || "").trim() || "Yeni Mesaj";
+                triggerNativeNotification(sender);
+                return Promise.resolve();
+            };
+        }
+    } catch (e) {
+        console.error("[WA Desktop] Bildirim kancalama hatası:", e);
+    }
+
+    // === 2. KİLİT EKRANI MODÜLÜ (App Lock) ===
     async function sha256(str) {
         const buffer = new TextEncoder().encode(str);
         const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);

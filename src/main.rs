@@ -2,8 +2,10 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    webview::{PermissionKind, PermissionResponse},
     Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
+use tauri_utils::config::BackgroundThrottlingPolicy;
 
 fn main() {
     let app_version = env!("CARGO_PKG_VERSION");
@@ -28,7 +30,7 @@ fn main() {
                     Image::from_bytes(icon_bytes).expect("Failed to load tray icon")
                 });
 
-            // Create main window dynamically with initialization script
+            // Create main window dynamically with initialization script & background active settings
             let lock_script = include_str!("lock.js");
             let _window = WebviewWindowBuilder::new(
                 app,
@@ -40,6 +42,26 @@ fn main() {
             .min_inner_size(650.0, 500.0)
             .resizable(true)
             .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
+            .background_throttling(BackgroundThrottlingPolicy::Disabled)
+            .on_permission_request(|_wv, kind| match kind {
+                PermissionKind::Notifications => PermissionResponse::Allow,
+                _ => PermissionResponse::Allow,
+            })
+            .on_document_title_changed(|_window, new_title| {
+                if new_title.starts_with("__WA_NOTIF__:") {
+                    let sender = new_title["__WA_NOTIF__:".len()..].trim();
+                    let sender_display = if sender.is_empty() { "Biri" } else { sender };
+
+                    // KDE Plasma native notification (Only sender name, no message body for privacy)
+                    let icon_path = "/home/mustafao/.gemini/antigravity/scratch/whatsapp-desktop/icons/512x512.png";
+                    let _ = std::process::Command::new("notify-send")
+                        .arg("-a").arg("WhatsApp")
+                        .arg("-i").arg(icon_path)
+                        .arg("WhatsApp")
+                        .arg(format!("Yeni mesaj: {}", sender_display))
+                        .spawn();
+                }
+            })
             .initialization_script(lock_script)
             .build()?;
 
