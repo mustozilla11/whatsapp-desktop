@@ -72,6 +72,15 @@
         const style = document.createElement('style');
         style.id = 'wa-desktop-lock-style';
         style.textContent = `
+            /* WebKitGTK Akıcılık ve GPU Katman Optimizasyonu */
+            * {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+            #pane-side, #main, [data-testid="conversation-panel-messages"] {
+                transform: translateZ(0);
+                will-change: transform;
+            }
             #wa-desktop-lock-root {
                 position: fixed;
                 inset: 0;
