@@ -8,15 +8,16 @@ use tauri::{
 use tauri_utils::config::BackgroundThrottlingPolicy;
 
 fn main() {
-    // Fix Wayland + Intel Xe / Dual-GPU DMA-BUF freezes, stutters & RAM leaks in WebKitGTK
+    // On Wayland fractional scaling (e.g. 2.25x on 4K), GTK3 rounds up to 3x (61MB/frame)
+    // and software rendering pins CPU at 100%. Running via XWayland (GDK_BACKEND=x11)
+    // lets KWin handle HiDPI scaling cleanly while using stable Intel Iris Xe (i915) GPU
+    // acceleration without DMA-BUF stalls.
     #[cfg(target_os = "linux")]
     {
         for (key, val) in [
+            ("GDK_BACKEND", "x11"),
+            ("DRI_PRIME", "0"),
             ("WEBKIT_DISABLE_DMABUF_RENDERER", "1"),
-            ("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1"),
-            ("WEBKIT_SKIA_CPU_PAINTING_THREADS", "2"),
-            ("WEBKIT_GST_DMABUF_SINK_DISABLED", "1"),
-            ("WEBKIT_GST_DISABLE_GL_SINK", "1"),
         ] {
             if std::env::var_os(key).is_none() {
                 std::env::set_var(key, val);
@@ -81,7 +82,8 @@ fn main() {
             .initialization_script(lock_script)
             .build()?;
 
-            // Tune WebKitGTK directly on Linux for low RAM, zero GPU freezes & crash auto-recovery
+            // Tune WebKitGTK directly on Linux: keep GPU acceleration ON (stable i915),
+            // reduce memory bloat, and auto-recover if WebProcess ever terminates
             #[cfg(target_os = "linux")]
             {
                 let _ = window.with_webview(|platform_webview| {
@@ -99,7 +101,7 @@ fn main() {
                         settings.set_enable_page_cache(false);
                         settings.set_enable_smooth_scrolling(true);
                         settings.set_hardware_acceleration_policy(
-                            HardwareAccelerationPolicy::Never,
+                            HardwareAccelerationPolicy::Always,
                         );
                     }
 
