@@ -8,6 +8,22 @@ use tauri::{
 use tauri_utils::config::BackgroundThrottlingPolicy;
 
 fn main() {
+    // Fix Wayland + Intel Xe / Dual-GPU DMA-BUF freezes, stutters & RAM leaks in WebKitGTK
+    #[cfg(target_os = "linux")]
+    {
+        for (key, val) in [
+            ("WEBKIT_DISABLE_DMABUF_RENDERER", "1"),
+            ("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1"),
+            ("WEBKIT_SKIA_CPU_PAINTING_THREADS", "2"),
+            ("WEBKIT_GST_DMABUF_SINK_DISABLED", "1"),
+            ("WEBKIT_GST_DISABLE_GL_SINK", "1"),
+        ] {
+            if std::env::var_os(key).is_none() {
+                std::env::set_var(key, val);
+            }
+        }
+    }
+
     let app_version = env!("CARGO_PKG_VERSION");
     let app_title = format!("WhatsApp v{}", app_version);
 
@@ -32,7 +48,7 @@ fn main() {
 
             // Create main window dynamically with initialization script & background active settings
             let lock_script = include_str!("lock.js");
-            let _window = WebviewWindowBuilder::new(
+            let window = WebviewWindowBuilder::new(
                 app,
                 "main",
                 WebviewUrl::External("https://web.whatsapp.com".parse().expect("Valid URL")),
@@ -42,7 +58,7 @@ fn main() {
             .min_inner_size(650.0, 500.0)
             .resizable(true)
             .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36")
-            .background_throttling(BackgroundThrottlingPolicy::Disabled)
+            .background_throttling(BackgroundThrottlingPolicy::Throttle)
             .on_permission_request(|_wv, kind| match kind {
                 PermissionKind::Notifications => PermissionResponse::Allow,
                 _ => PermissionResponse::Allow,
@@ -64,6 +80,43 @@ fn main() {
             })
             .initialization_script(lock_script)
             .build()?;
+
+            // Tune WebKitGTK directly on Linux for low RAM, zero GPU freezes & crash auto-recovery
+            #[cfg(target_os = "linux")]
+            {
+                let _ = window.with_webview(|platform_webview| {
+                    use std::cell::Cell;
+                    use std::time::{Duration, Instant};
+                    use webkit2gtk::{
+                        CacheModel, HardwareAccelerationPolicy, SettingsExt, WebContextExt,
+                        WebViewExt,
+                    };
+
+                    let wv = platform_webview.inner();
+
+                    if let Some(settings) = wv.settings() {
+                        settings.set_enable_webgl(false);
+                        settings.set_enable_page_cache(false);
+                        settings.set_enable_smooth_scrolling(true);
+                        settings.set_hardware_acceleration_policy(
+                            HardwareAccelerationPolicy::Never,
+                        );
+                    }
+
+                    if let Some(ctx) = wv.context() {
+                        ctx.set_cache_model(CacheModel::DocumentBrowser);
+                    }
+
+                    // Auto-recover if WebKitWebProcess crashes (rate-limited to avoid loops)
+                    let last_reload = Cell::new(Instant::now() - Duration::from_secs(10));
+                    wv.connect_web_process_terminated(move |wv, _reason| {
+                        if last_reload.get().elapsed() >= Duration::from_secs(3) {
+                            last_reload.set(Instant::now());
+                            wv.reload();
+                        }
+                    });
+                });
+            }
 
             // Build Tray Context Menu
             let title_item = MenuItem::with_id(app, "info", &app_title, false, None::<&str>)?;

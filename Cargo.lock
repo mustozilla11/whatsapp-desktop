@@ -4252,12 +4252,13 @@ dependencies = [
 
 [[package]]
 name = "whatsapp-desktop"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-single-instance",
  "tauri-utils",
+ "webkit2gtk",
 ]
 
 [[package]]
