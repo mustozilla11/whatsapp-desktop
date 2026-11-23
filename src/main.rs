@@ -41,7 +41,7 @@ fn main() {
             .inner_size(1150.0, 780.0)
             .min_inner_size(650.0, 500.0)
             .resizable(true)
-            .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
+            .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36")
             .background_throttling(BackgroundThrottlingPolicy::Disabled)
             .on_permission_request(|_wv, kind| match kind {
                 PermissionKind::Notifications => PermissionResponse::Allow,
